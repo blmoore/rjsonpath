@@ -1,11 +1,14 @@
 Package: rjsonpath
 Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: MIT + file LICENSE
+Title: JSONPath implementation in R
+Version: 0.0.1
+Author: person("Ben", "Moore", email = "ben@blm.io",
+  role = c("aut", "cre")
+Description: Selector syntax for JSON data.
+License: MIT
 Encoding: UTF-8
 LazyData: true
+RoxygenNote: 6.0.1
+Suggests: testthat
+Imports: jsonlite,
+    stringr
