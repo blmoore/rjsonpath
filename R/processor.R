@@ -1,18 +1,64 @@
+field_check <- function(json, field) {
+  if (!field %in% names(json)) {
+    stop(field, " not found in json (",
+      paste(names(json), collapse = ","))
+  }
+}
 
+# recurse through each part with each json subset
+# index needs to associate with RHS:
+# x[*].y means get y from all x
+parse_part <- function(part, json) {
+
+  if (grepl("^\\[", part)) {
+    # indexing a list
+
+    subparts <- stringr::str_split_fixed(substr(part, 2, nchar(part)),
+      "\\[", 2)
+    index <- subparts[[1]]
+    field <- subparts[[2]]
+
+    # range subset
+    if (grepl(":", index)) {
+      indices <- stringr::str_split_fixed(":", index, 2)
+    } else {
+      # * or index
+      if (index == "*") {
+        this_json <- lapply(this_json, `[[`, field_id)
+      } else {
+        this_json <- this_json[[index]]
+      }
+    }
+
+  } else {
+    # requesting a single named object
+
+    field_id <- part
+    print(paste0("Field: ", field_id))
+    field_check(json, field_id)
+
+    this_json <- `[[`(json, field_id)
+
+  }
+
+  this_json
+}
 
 parse_jpath <- function(json, path, zero_index = TRUE) {
 
-  parts <- unlist(strsplit(path, "\\.|\\["))[-1]
-  offset <- if (zero_index) 1 else 0
-  result <- json
+  # negative lookahead: split on '.' but not '].'
+  parts <- stringr::str_split(path, "(?<!\\])\\.", simplify = TRUE)[-1]
+  parts <- unlist(strsplit(parts, "\\["))
+  parts <- gsub("^(.*?)\\]\\.", "[\\1]", parts)
 
+  this_json <- json
   for (p in parts) {
-    if (grepl('\\]', p)) {
-      p <- as.numeric(sub('\\]', '', p)) + offset
-    }
-    result <- `[[`(result, p)
+    next_json <- parse_part(p, this_json)
+    this_json <- next_json
+    print(next_json)
   }
-  result
+
+  this_json
 }
 
 #' Apply JSONPath to a json object
