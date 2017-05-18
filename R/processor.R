@@ -24,9 +24,9 @@ parse_part <- function(part, json) {
     } else {
       # * or index
       if (index == "*") {
-        this_json <- lapply(this_json, `[[`, field_id)
+        this_json <- lapply(json, `[[`, field_id)
       } else {
-        this_json <- this_json[[index]]
+        this_json <- json[[index]]
       }
     }
 
@@ -34,6 +34,25 @@ parse_part <- function(part, json) {
     # requesting a single named object
 
     field_id <- part
+
+    if (grepl("\\]$", field_id)) {
+      # single index on previous field
+      field_id <- sub("\\]", "", field_id)
+      simple_index <- suppressWarnings(as.numeric(field_id))
+      if (!is.na(simple_index)) {
+        return(`[[`(json, simple_index))
+      } else {
+        if (grepl(":", field_id)) {
+          # range using seq
+          range <- as.numeric(stringr::str_split_fixed(field_id, ":", 2))
+          print(range)
+          return(`[`(json, seq(range[[1]], range[[2]])))
+        } else {
+          stop("not yet implemented")
+        }
+      }
+    }
+
     print(paste0("Field: ", field_id))
     field_check(json, field_id)
 
@@ -93,3 +112,7 @@ json_path <- function(json, path,
 
   results
 }
+
+
+# json <- read_json("tests/testthat/bookstore.json")
+# books <- json_path(json, "$.store.book[1:4]")
