@@ -1,4 +1,9 @@
 field_check <- function(json, field) {
+
+  if (is.null(names(json))) {
+    stop("attempted to index array by name, use [*] for all items")
+  }
+
   if (!field %in% names(json)) {
     stop(field, " not found in json (",
       paste(names(json), collapse = ","))
@@ -8,7 +13,7 @@ field_check <- function(json, field) {
 # recurse through each part with each json subset
 # index needs to associate with RHS:
 # x[*].y means get y from all x
-parse_part <- function(part, json) {
+parse_part <- function(part, json, zero_index) {
 
   if (grepl("^\\[", part)) {
     # indexing a list
@@ -26,6 +31,7 @@ parse_part <- function(part, json) {
       if (index == "*") {
         this_json <- lapply(json, `[[`, field_id)
       } else {
+        index <- if (zero_index) index + 1 else index
         this_json <- json[[index]]
       }
     }
@@ -40,12 +46,14 @@ parse_part <- function(part, json) {
       field_id <- sub("\\]", "", field_id)
       simple_index <- suppressWarnings(as.numeric(field_id))
       if (!is.na(simple_index)) {
+        simple_index <- if (zero_index) simple_index + 1 else simple_index
         return(`[[`(json, simple_index))
       } else {
         if (grepl(":", field_id)) {
           # range using seq
           range <- as.numeric(stringr::str_split_fixed(field_id, ":", 2))
-          print(range)
+          range <- if (zero_index) range + 1 else range
+          # print(range)
           return(`[`(json, seq(range[[1]], range[[2]])))
         } else {
           stop("not yet implemented")
@@ -53,7 +61,7 @@ parse_part <- function(part, json) {
       }
     }
 
-    print(paste0("Field: ", field_id))
+    # print(paste0("Field: ", field_id))
     field_check(json, field_id)
 
     this_json <- `[[`(json, field_id)
@@ -72,9 +80,9 @@ parse_jpath <- function(json, path, zero_index = TRUE) {
 
   this_json <- json
   for (p in parts) {
-    next_json <- parse_part(p, this_json)
+    next_json <- parse_part(p, this_json, zero_index)
     this_json <- next_json
-    print(next_json)
+    # print(next_json)
   }
 
   this_json
@@ -108,11 +116,11 @@ json_path <- function(json, path,
     stop("JSONPath expression must start with '$.'")
   }
 
-  results <- parse_jpath(json, path)
+  results <- parse_jpath(json, path, zero_index)
 
   results
 }
 
 
 # json <- read_json("tests/testthat/bookstore.json")
-# books <- json_path(json, "$.store.book[1:4]")
+# books <- json_path(json, "$.store.book[0]")

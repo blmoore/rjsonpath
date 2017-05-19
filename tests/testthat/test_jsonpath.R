@@ -23,6 +23,12 @@ test_that("json_path can select a range of items", {
 
 })
 
+test_that("zero indexing can be switched on or off", {
+  zero <- json_path(json, "$.store.book[0]")
+  nonzero <- json_path(json, "$.store.book[1]", zero_index = FALSE)
+  expect_equal(zero, nonzero)
+})
+
 context("Advanced JSONPath")
 
 test_that("single-quoted dots work in member names", {
