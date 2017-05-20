@@ -1,0 +1,11 @@
+template:
+  params:
+    bootswatch: cosmo
+reference:
+  - title: Functions
+    desc:  Main rjsonpath functions
+    contents:
+      - json_path
+  - title: Re-exported functions
+    contents:
+      - read_json
