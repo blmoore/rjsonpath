@@ -20,7 +20,7 @@ is_nested <- function(l) {
   FALSE
 }
 
-#' Extract sub-list from list
+# Extract sub-list from list
 get_listitem <- function(json, part, zero_index) {
 
   index <- gsub("\\[|\\]", "", part)
@@ -48,7 +48,7 @@ get_listitem <- function(json, part, zero_index) {
   this_json
 }
 
-#' Uses parts like [1:5]author to get a named subset
+# Uses parts like [1:5]author to get a named subset
 get_namedlistitem <- function(json, part, zero_index) {
 
   # print(part)
@@ -78,6 +78,7 @@ get_namedlistitem <- function(json, part, zero_index) {
 }
 
 #' Extract named object from object
+#' @keywords internal
 get_obj <- function(json, name) {
 
   if (is.null(names(json))) {

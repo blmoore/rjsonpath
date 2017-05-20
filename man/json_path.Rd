@@ -4,7 +4,7 @@
 \alias{json_path}
 \title{Apply JSONPath to a json object}
 \usage{
-json_path(json, path, strict = TRUE, zero_index = TRUE)
+json_path(json, path, strict = TRUE, zero_index = TRUE, simplify = TRUE)
 }
 \arguments{
 \item{json}{a JSON object loaded
