@@ -1,13 +1,55 @@
-field_check <- function(json, field) {
+
+test_num <- function(charnum) {
+  num <- as.numeric(charnum)
+  if (any(is.na(num))) {
+    stop("cannot convert ", charnum, " to an index")
+  }
+  num
+}
+
+#' Extract sub-list from list
+get_listitem <- function(json_list, part, zero_index) {
+
+  subparts <- stringr::str_split_fixed(
+    substr(part, 2, nchar(part)), "\\]", 2)
+  index <- subparts[[1]]
+  field <- subparts[[2]]
+
+  # range subset
+  if (grepl(":", index)) {
+    indices <- stringr::str_split_fixed(":", index, 2)
+    range <- as.numeric(stringr::str_split_fixed(field_id, ":", 2))
+    range <- if (zero_index) range + 1 else range
+    print(range)
+    return(`[`(json, seq(range[[1]], range[[2]])))
+  } else {
+    # * or index
+    if (index == "*") {
+      this_json <- lapply(json, `[[`, field_id)
+    } else {
+      index <- test_num(index)
+      index <- if (zero_index) index + 1 else index
+      this_json <- json[[index]]
+    }
+  }
+
+  this_json
+}
+
+#' Extract named object from object
+get_obj <- function(json, name) {
 
   if (is.null(names(json))) {
-    stop("attempted to index array by name, use [*] for all items")
+    stop("attempted named query on array, index the ",
+      name, " part with [*]")
   }
 
-  if (!field %in% names(json)) {
-    stop(field, " not found in json (",
+  if (!name %in% names(json)) {
+    stop(name, " not found in json (",
       paste(names(json), collapse = ","))
   }
+
+  `[[`(json, name)
 }
 
 # recurse through each part with each json subset
@@ -17,55 +59,10 @@ parse_part <- function(part, json, zero_index) {
 
   if (grepl("^\\[", part)) {
     # indexing a list
-
-    subparts <- stringr::str_split_fixed(substr(part, 2, nchar(part)),
-      "\\[", 2)
-    index <- subparts[[1]]
-    field <- subparts[[2]]
-
-    # range subset
-    if (grepl(":", index)) {
-      indices <- stringr::str_split_fixed(":", index, 2)
-    } else {
-      # * or index
-      if (index == "*") {
-        this_json <- lapply(json, `[[`, field_id)
-      } else {
-        index <- if (zero_index) index + 1 else index
-        this_json <- json[[index]]
-      }
-    }
-
+    get_fn <- get_listitem(json, part, zero_index = zero_index)
   } else {
     # requesting a single named object
-
-    field_id <- part
-
-    if (grepl("\\]$", field_id)) {
-      # single index on previous field
-      field_id <- sub("\\]", "", field_id)
-      simple_index <- suppressWarnings(as.numeric(field_id))
-      if (!is.na(simple_index)) {
-        simple_index <- if (zero_index) simple_index + 1 else simple_index
-        return(`[[`(json, simple_index))
-      } else {
-        if (grepl(":", field_id)) {
-          # range using seq
-          range <- as.numeric(stringr::str_split_fixed(field_id, ":", 2))
-          range <- if (zero_index) range + 1 else range
-          # print(range)
-          return(`[`(json, seq(range[[1]], range[[2]])))
-        } else {
-          stop("not yet implemented")
-        }
-      }
-    }
-
-    # print(paste0("Field: ", field_id))
-    field_check(json, field_id)
-
-    this_json <- `[[`(json, field_id)
-
+    this_json <- get_obj(json, part)
   }
 
   this_json
@@ -73,13 +70,14 @@ parse_part <- function(part, json, zero_index) {
 
 parse_jpath <- function(json, path, zero_index = TRUE) {
 
-  # negative lookahead: split on '.' but not '].'
-  parts <- stringr::str_split(path, "(?<!\\])\\.", simplify = TRUE)[-1]
-  parts <- unlist(strsplit(parts, "\\["))
-  parts <- gsub("^(.*?)\\]\\.", "[\\1]", parts)
+  # if not strict, don't skip first
+  parts <- stringr::str_split(path, "\\.|\\[", simplify = TRUE)[-1]
+  parts <- gsub("^(.*?)\\]", "[\\1]", parts)
+  print(parts)
 
   this_json <- json
   for (p in parts) {
+    message(p)
     next_json <- parse_part(p, this_json, zero_index)
     this_json <- next_json
     # print(next_json)
@@ -122,5 +120,5 @@ json_path <- function(json, path,
 }
 
 
-# json <- read_json("tests/testthat/bookstore.json")
-# books <- json_path(json, "$.store.book[0]")
+json <- read_json("tests/testthat/bookstore.json")
+books <- json_path(json, "$.store.book[1].author")
