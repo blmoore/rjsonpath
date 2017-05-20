@@ -29,6 +29,15 @@ test_that("zero indexing can be switched on or off", {
   expect_equal(zero, nonzero)
 })
 
+test_that("json_path works with magrittr pipes", {
+  if (require(magrittr)) {
+    first_book <- read_json("bookstore.json") %>%
+      json_path("$.store.book[1]")
+    nonmagrittr <- json_path(json, "$.store.book[1]")
+    expect_equal(first_book, nonmagrittr)
+  }
+})
+
 context("Advanced JSONPath")
 
 test_that("single-quoted dots work in member names", {

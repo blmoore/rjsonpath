@@ -77,8 +77,7 @@ get_namedlistitem <- function(json, part, zero_index) {
   this_json
 }
 
-#' Extract named object from object
-#' @keywords internal
+# Extract named object from object
 get_obj <- function(json, name) {
 
   if (is.null(names(json))) {
@@ -138,18 +137,32 @@ parse_jpath <- function(json, path, zero_index = TRUE) {
 #' a JSONPath query.
 #'
 #' JSONPath is an XPath-like language for
-#' querying JSON data.
+#' querying JSON data, see \url{http://goessner.net/articles/JsonPath/}
+#' for details.
 #'
 #' @param json a JSON object loaded
 #'   by \code{\link[jsonlite]{read_json}}
 #' @param path a JSONPath expression string,
 #'   see details
+#' @param strict require JSONPath starts with '$.'
+#' @param zero_index numeric indices start from 0
+#'   rather than 1
+#' @param simplify convert simple list results to
+#'   vectors
 #'
-#' @return a \code{data.frame} of JSONPath results
+#' @return a list or vector of JSONPath results
+#'
+#' @examples
+#' \dontrun{
+#' json <- read_json("bookstore.json")
+#' authors <- json_path(json, "$.store.books[*].author")
+#' # [1] "Nigel Rees"       "Evelyn Waugh"     "Herman Melville"  "J. R. R. Tolkien"
+#' }
+#'
 #'
 #' @export
-json_path <- function(json, path,
-  strict = TRUE, zero_index = TRUE, simplify = TRUE) {
+json_path <- function(json, path, strict = TRUE,
+  zero_index = TRUE, simplify = TRUE) {
 
   if (!class(json) == "list") {
     stop("json must be a list produced by read_json")
@@ -170,7 +183,4 @@ json_path <- function(json, path,
   results
 }
 
-
-# js <- read_json("tests/testthat/bookstore.json")
-# json_path(js, "$.store.book[*].author")
 

@@ -92,18 +92,39 @@ by <code><a href='http://www.rdocumentation.org/packages/jsonlite/topics/read_js
       <td><p>a JSONPath expression string,
 see details</p></td>
     </tr>
+    <tr>
+      <th>strict</th>
+      <td><p>require JSONPath starts with '$.'</p></td>
+    </tr>
+    <tr>
+      <th>zero_index</th>
+      <td><p>numeric indices start from 0
+rather than 1</p></td>
+    </tr>
+    <tr>
+      <th>simplify</th>
+      <td><p>convert simple list results to
+vectors</p></td>
+    </tr>
     </table>
     
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>a <code>data.frame</code> of JSONPath results</p>
+    <p>a list or vector of JSONPath results</p>
     
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
     <p>JSONPath is an XPath-like language for
-querying JSON data.</p>
+querying JSON data, see <a href = 'http://goessner.net/articles/JsonPath/'>http://goessner.net/articles/JsonPath/</a>
+for details.</p>
     
 
+    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
+    <pre class="examples"><div class='input'><span class='fu'>not_run</span>({
+  <span class='no'>json</span> <span class='kw'>&lt;-</span> <span class='fu'><a href='reexports.html'>read_json</a></span>(<span class='st'>"bookstore.json"</span>)
+  <span class='no'>authors</span> <span class='kw'>&lt;-</span> <span class='fu'>json_path</span>(<span class='no'>json</span>, <span class='st'>"$.store.books[*].author"</span>)
+  <span class='co'># [1] "Nigel Rees"       "Evelyn Waugh"     "Herman Melville"  "J. R. R. Tolkien"</span>
+})</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
     <h2>Contents</h2>
@@ -113,7 +134,9 @@ querying JSON data.</p>
       <li><a href="#value">Value</a></li>
 
       <li><a href="#details">Details</a></li>
-          </ul>
+      
+      <li><a href="#examples">Examples</a></li>
+    </ul>
 
   </div>
 </div>

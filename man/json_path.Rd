@@ -12,9 +12,17 @@ by \code{\link[jsonlite]{read_json}}}
 
 \item{path}{a JSONPath expression string,
 see details}
+
+\item{strict}{require JSONPath starts with '$.'}
+
+\item{zero_index}{numeric indices start from 0
+rather than 1}
+
+\item{simplify}{convert simple list results to
+vectors}
 }
 \value{
-a \code{data.frame} of JSONPath results
+a list or vector of JSONPath results
 }
 \description{
 Takes a JSON object as loaded via the
@@ -23,5 +31,15 @@ a JSONPath query.
 }
 \details{
 JSONPath is an XPath-like language for
-querying JSON data.
+querying JSON data, see \url{http://goessner.net/articles/JsonPath/}
+for details.
+}
+\examples{
+\dontrun{
+json <- read_json("bookstore.json")
+authors <- json_path(json, "$.store.books[*].author")
+# [1] "Nigel Rees"       "Evelyn Waugh"     "Herman Melville"  "J. R. R. Tolkien"
+}
+
+
 }
