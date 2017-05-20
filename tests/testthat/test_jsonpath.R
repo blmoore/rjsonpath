@@ -18,8 +18,8 @@ test_that("json_path can select multiple items with wildcards", {
 
 test_that("json_path can select a range of items", {
 
-  from_range <- json_path(json, "$.store.book[*].author[2:5]")
-  expect_length(from_range, 4)
+  from_range <- json_path(json, "$.store.book[*].author[2:3]")
+  expect_length(from_range, 2)
 
 })
 
