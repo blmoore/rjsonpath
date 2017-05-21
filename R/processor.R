@@ -230,7 +230,7 @@ json_path <- function(json, path, strict = TRUE,
   results
 }
 
-library(magrittr)
-read_json("tests/testthat/bookstore.json") %>%
-  json_path("$..title")
-
+# library(magrittr)
+# read_json("tests/testthat/bookstore.json") %>%
+#   json_path("$..title")
+#

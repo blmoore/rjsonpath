@@ -44,6 +44,11 @@ test_that("named objects can be omitted", {
   name_omitted <- json_path(json, "$..book[0].title")
   with_name <- json_path(json, "$.store.book[0].title")
   expect_equal(name_omitted, with_name)
+
+  name_omitted <- json_path(json, "$..book[0].title")
+  with_name <- json_path(json, "$.store.book[0].title")
+  expect_equal(name_omitted, with_name)
+
 })
 
 test_that("single-quoted dots work in member names", {
