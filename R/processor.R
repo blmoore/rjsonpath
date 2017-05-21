@@ -98,13 +98,14 @@ get_obj <- function(json, name) {
 # x[*].y means get y from all x
 parse_part <- function(part, json, zero_index) {
 
+  message("processing this part: ", part)
   if (grepl("\\]", part)) {
     if (grepl("\\]$", part)) {
       # simple index to end query
       this_json <- get_listitem(json, part, zero_index = zero_index)
     } else {
       # index by named
-      message("named list item")
+      # message("named list item")
       this_json <- get_namedlistitem(json, part, zero_index = zero_index)
     }
   } else {
@@ -122,13 +123,14 @@ parse_jpath <- function(json, path, first = TRUE, zero_index = TRUE) {
   if (first) {
     parts <- parts[-1]
   }
-
   parts <- unlist(strsplit(parts, "\\["))
   parts <- gsub("^(.*?)\\]\\.", "[\\1]", parts)
-  message("parts: ", paste(parts, collapse = ", "))
+  # message("parts: ", paste(parts, collapse = ", "))
 
   for (p in parts) {
-    json <- parse_part(p, json, zero_index)
+    if (p != "") {
+      json <- parse_part(p, json, zero_index)
+    }
   }
 
   json
@@ -139,18 +141,18 @@ node_test <- function(json, path) {
   # path something like $..field(?[index])
   # normalise path by recursive descent
   first_field <- sub("\\$?\\.{2}([[:alpha:]]*).*", "\\1", path)
-  message("finding ", first_field)
+  # message("finding ", first_field)
   new_path <- sub(paste0("\\$?\\.{2}", first_field), "", path)
 
   while (TRUE) {
     if (first_field %in% names(json)) {
       return(list(
-        json=json[[first_field]],
+        json = json[[first_field]],
         "path" = new_path)
       )
     } else {
       new_json <- purrr::flatten(json)
-      if (!is_nested(new_json) && new_json == json) {
+      if (!is_nested(new_json) && setequal(names(new_json), names(json))) {
         stop("field ", first_field, "not found")
       }
       json <- new_json
@@ -207,7 +209,9 @@ json_path <- function(json, path, strict = TRUE,
     json <- results$json
     path <- results$path
     first <- FALSE
-    message("new path: ", path)
+    # message("new path: ", path)
+    # message("new json:")
+    # print(json)
   }
 
   if (path != "") {
@@ -228,5 +232,5 @@ json_path <- function(json, path, strict = TRUE,
 
 library(magrittr)
 read_json("tests/testthat/bookstore.json") %>%
-  json_path("$..book[0].title")
+  json_path("$..title")
 
