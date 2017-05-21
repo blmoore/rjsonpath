@@ -115,10 +115,14 @@ parse_part <- function(part, json, zero_index) {
   this_json
 }
 
-parse_jpath <- function(json, path, zero_index = TRUE) {
+parse_jpath <- function(json, path, first = TRUE, zero_index = TRUE) {
 
   # TODO: if not strict, don't skip first
-  parts <- stringr::str_split(path, "(?<!\\])\\.", simplify = TRUE)[-1]
+  parts <- stringr::str_split(path, "(?<!\\])\\.", simplify = TRUE)
+  if (first) {
+    parts <- parts[-1]
+  }
+
   parts <- unlist(strsplit(parts, "\\["))
   parts <- gsub("^(.*?)\\]\\.", "[\\1]", parts)
   message("parts: ", paste(parts, collapse = ", "))
@@ -128,6 +132,30 @@ parse_jpath <- function(json, path, zero_index = TRUE) {
   }
 
   json
+}
+
+
+node_test <- function(json, path) {
+  # path something like $..field(?[index])
+  # normalise path by recursive descent
+  first_field <- sub("\\$?\\.{2}([[:alpha:]]*).*", "\\1", path)
+  message("finding ", first_field)
+  new_path <- sub(paste0("\\$?\\.{2}", first_field), "", path)
+
+  while (TRUE) {
+    if (first_field %in% names(json)) {
+      return(list(
+        json=json[[first_field]],
+        "path" = new_path)
+      )
+    } else {
+      new_json <- purrr::flatten(json)
+      if (!is_nested(new_json) && new_json == json) {
+        stop("field ", first_field, "not found")
+      }
+      json <- new_json
+    }
+  }
 }
 
 #' Apply JSONPath to a json object
@@ -172,7 +200,22 @@ json_path <- function(json, path, strict = TRUE,
     stop("JSONPath expression must start with '$.'")
   }
 
-  results <- parse_jpath(json, path, zero_index)
+  first <- TRUE
+  # path with fields omitted, walk tree and build full path
+  if (grepl("\\.{2}", path)) {
+    results <- node_test(json, path)
+    json <- results$json
+    path <- results$path
+    first <- FALSE
+    message("new path: ", path)
+  }
+
+  if (path != "") {
+    results <- parse_jpath(json, path, first = first,
+      zero_index = zero_index)
+  } else {
+    results <- json
+  }
 
   if (simplify) {
     if (!is_nested(results)) {
@@ -183,4 +226,7 @@ json_path <- function(json, path, strict = TRUE,
   results
 }
 
+library(magrittr)
+read_json("tests/testthat/bookstore.json") %>%
+  json_path("$..book[0].title")
 
