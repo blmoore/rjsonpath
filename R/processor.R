@@ -202,24 +202,9 @@ json_path <- function(json, path, strict = TRUE,
     stop("JSONPath expression must start with '$.'")
   }
 
-  first <- TRUE
-  # path with fields omitted, walk tree and build full path
-  if (grepl("\\.{2}", path)) {
-    results <- node_test(json, path)
-    json <- results$json
-    path <- results$path
-    first <- FALSE
-    # message("new path: ", path)
-    # message("new json:")
-    # print(json)
-  }
-
-  if (path != "") {
-    results <- parse_jpath(json, path, first = first,
-      zero_index = zero_index)
-  } else {
-    results <- json
-  }
+  normed_path <- format_path(path)
+  message("processing ", normed_path)
+  results <- process_piece(normed_path, json, "")
 
   if (simplify) {
     if (!is_nested(results)) {
@@ -229,8 +214,3 @@ json_path <- function(json, path, strict = TRUE,
 
   results
 }
-
-# library(magrittr)
-# read_json("tests/testthat/bookstore.json") %>%
-#   json_path("$..title")
-#
