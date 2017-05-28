@@ -16,61 +16,74 @@ add_pieces <- function(piece1, piece2, ...) {
 }
 
 get_piece <- function(json, piece) {
+
   if (piece %in% names(json)) {
-    out_json <- json[[piece]]
+    if (!anyDuplicated(names(json))) {
+      out_json <- json[[piece]]
+    } else {
+      # TODO fix this output structure
+      out_json <- json[names(json) == piece]
+    }
   } else {
     array_names <- unique(unlist(lapply(json, names)))
     if (piece %in% array_names) {
       out_json <- lapply(json, `[[`, piece)
     } else {
-      #stop(piece, " not found in json")
-      return(FALSE)
+      stop(piece, " not found in json")
     }
   }
+
   out_json
 }
 
+# walk + get all for part (..X)
 get_anywhere <- function(jpath, json) {
 
-  stop("$..<x> search not implemented")
-  search_part <- gsub("^$;\\.\\.;(.*?);", "\\1", jpath)
+  results <- vector("list", 1e5)
+  i <- 1L
+  nested <- is_nested(json)
+  while (TRUE) {
+    try({
+      results[[i]] <- get_piece(json, jpath)
+      if (class(search_result) == "list") {
+        results[[i]] <- search_result
+      }
+    }, silent = TRUE)
 
-  results <- list()
-  search_result <- get_piece(json, search_part)
-  if (search_result) {
-    results <- c(results, search_result)
+    if (!nested) {
+      break
+    }
+
+    json <- purrr::flatten(json)
+    nested <- is_nested(json)
   }
 
-  if (!any(grepl(search, names))) {
-    stop("no matching elements found for: ", search_part)
+  if (length(!is.null(results)) == 0) {
+    stop("get_anywhere: no matching elements found for: ", jpath)
   }
 
-  has_part <- grepl(search, names)
-  paths <- unique(sub(paste0("^(.*?", search, ")"), "\\1", names[has_part]))
-
-  results <- list()
-  for (p in paths) {
-    pieces <- strsplit(p, "\\.")
-
-  }
+  unname(results[[!is.null(results)]])
 }
 
 # if json object is an array or has named objects,
 # apply fn to each item
 walk_tree <- function(piece, remaining, json, processed, recurse = FALSE) {
+
+  # print(paste0("walk_tree got piece: ", piece))
   downstream <- consume_part(remaining)
   next_piece <- downstream[[1]]
   todo <- downstream[[2]]
 
   if (next_piece %in% names(json)) {
-    out_json <- json[[piece]]
+    out_json <- json[[next_piece]]
   } else {
     # assume array
     array_names <- unique(unlist(lapply(json, names)))
+    # print(paste(array_names, collapse = ", "))
     if (next_piece %in% array_names) {
       out_json <- lapply(json, `[[`, next_piece)
     } else {
-      stop(piece, " not found in json")
+      stop("walk_tree: ", next_piece, " not found in json")
     }
   }
 
@@ -121,7 +134,7 @@ process_piece <- function(jsonpath, json, processed, zero_index=TRUE) {
       # process piece against json
       if (this_piece == "..") {
         # message("walking: ", this_piece)
-        json <- walk_tree(this_piece, todo, json, processed)
+        return(get_anywhere(todo, json))
       } else {
         if (this_piece == "*") {
           json <- walk_tree(this_piece, todo, json, processed, recurse=TRUE)
@@ -130,14 +143,14 @@ process_piece <- function(jsonpath, json, processed, zero_index=TRUE) {
             json <- slice(this_piece, json, zero_index = zero_index)
             #stop("range not implemented")
           } else {
-            # message("processing: ", todo)
+            # piece label
             json <- Recall(todo, get_piece(json, this_piece),
               add_pieces(processed, this_piece))
           }
         }
       }
     } else {
-      # process piece
+      # skip first piece and process
       json <- Recall(todo, json, add_pieces(processed, this_piece))
     }
   }

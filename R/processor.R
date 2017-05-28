@@ -20,6 +20,8 @@ is_nested <- function(l) {
   FALSE
 }
 
+
+
 # Extract sub-list from list
 get_listitem <- function(json, part, zero_index) {
 
@@ -215,6 +217,3 @@ json_path <- function(json, path, strict = TRUE,
   results
 }
 
-#
-
-#
