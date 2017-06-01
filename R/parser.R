@@ -1,11 +1,5 @@
 # traversal functions for jsonpath
 
-# core args to functions:
-#      piece: current path part being processed
-#  remaining: RHS of unprocessed jsonpath
-#       json: current list object
-#  processed: LHS of process jsonpath
-
 # take a path and split into a vector of (piece, remaining)
 consume_part <- function(path) {
   stringr::str_split_fixed(sub("^(.*?);(.*)$", "\\1 \\2", path), " ", 2)
@@ -15,8 +9,23 @@ add_pieces <- function(piece1, piece2, ...) {
   paste(piece1, piece2, ..., sep = ";")
 }
 
-get_piece <- function(json, piece) {
+is_number <- function(string) {
+  suppressWarnings(!any(is.na(as.numeric(string))))
+}
 
+get_piece <- function(json, piece, zero_index) {
+
+  if (is.null(json)) {
+    stop("searching empty json object for: ", piece)
+  }
+
+  # numeric index of list
+  if (is_number(piece)) {
+    index <- if (zero_index) as.numeric(piece) + 1 else as.numeric(piece)
+    return(json[[index]])
+  }
+
+  # json subset
   if (piece %in% names(json)) {
     if (!anyDuplicated(names(json))) {
       out_json <- json[[piece]]
@@ -41,6 +50,9 @@ get_anywhere <- function(jpath, json) {
 
   results <- vector("list", 1e5)
   i <- 1L
+
+  # might be followed by an index or range
+  jpath <- consume_part(jpath)[[1]]
   nested <- is_nested(json)
   while (TRUE) {
     try({
@@ -64,6 +76,7 @@ get_anywhere <- function(jpath, json) {
 
   unname(results[[!is.null(results)]])
 }
+
 
 # if json object is an array or has named objects,
 # apply fn to each item
@@ -120,31 +133,37 @@ format_path <- function(jsonpath) {
 # primary recursive function
 process_piece <- function(jsonpath, json, processed, zero_index=TRUE) {
 
-  # message("current path: ", jsonpath, "\n",
-  #   "processed: ", processed, "\n",
-  #   "json: ", str(json))
+  message("\n --- new recursion --- ")
+  message("current path: ", jsonpath, "\n",
+    "processed: ", processed, "\n")
+  if (is.null(json)) {
+    stop("reached null json object after processing ", processed,
+      " (remaining: ", jsonpath, ")")
+  }
 
   if (jsonpath != "" & jsonpath != "*") {
     # split chunk off path
     bits <- consume_part(jsonpath)
     this_piece <- bits[[1]]
     todo <- bits[[2]]
+    message("this: ", this_piece, "\ntodo: ", todo)
 
     if (this_piece != "$") {
       # process piece against json
       if (this_piece == "..") {
         # message("walking: ", this_piece)
-        return(get_anywhere(todo, json))
+        json <- Recall(consume_part(todo)[[2]], get_anywhere(todo, json),
+          add_pieces(processed, this_piece, todo))
       } else {
         if (this_piece == "*") {
-          json <- walk_tree(this_piece, todo, json, processed, recurse=TRUE)
+          json <- walk_tree(this_piece, todo, json, processed, recurse = TRUE)
         } else {
           if (grepl(":", this_piece)) {
             json <- slice(this_piece, json, zero_index = zero_index)
             #stop("range not implemented")
           } else {
             # piece label
-            json <- Recall(todo, get_piece(json, this_piece),
+            json <- Recall(todo, get_piece(json, this_piece, zero_index = TRUE),
               add_pieces(processed, this_piece))
           }
         }

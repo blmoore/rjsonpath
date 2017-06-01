@@ -35,7 +35,7 @@ get_listitem <- function(json, part, zero_index) {
   } else {
     # * or index
     if (index == "*") {
-      this_json <- lapply(json, `[[`, field_id)
+      this_json <- lapply(json, `[[`, part)
     } else {
       index <- test_num(index)
       index <- if (zero_index) index + 1 else index
