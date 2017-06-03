@@ -32,7 +32,14 @@ get_piece <- function(json, piece) {
   } else {
     array_names <- unique(unlist(lapply(json, names)))
     if (piece %in% array_names) {
-      out_json <- lapply(json, `[[`, piece)
+      has_names <- grepl(piece, lapply(json, names))
+      if (!all(has_names)) {
+        # select only sublists with name:
+        this_json <- grepl(piece, lapply(json, names))
+        out_json <- lapply(json[this_json], `[[`, piece)
+      } else {
+        out_json <- lapply(json, `[[`, piece)
+      }
     } else {
       stop(piece, " not found in json")
     }

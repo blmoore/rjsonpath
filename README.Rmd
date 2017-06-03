@@ -18,6 +18,87 @@ knitr::opts_chunk$set(
 [![docs_badge](https://img.shields.io/badge/docs-latest-blue.svg)](http://blm.io/rjsonpath)
 [![CRAN_badge](http://www.r-pkg.org/badges/version/rjsonpath)](https://cran.r-project.org/package=rjsonpath)
 
-rjsonpath implements [JSONPath](http://goessner.net/articles/JsonPath/) in R. JSONPath is a 
-selector / querying language for JSON, similar to XPath for XML.
+Reading JSON into R usually leaves you with some deeply-nested
+list objects which are a pain to munge and navigate — applying path
+expressions is one way to make this easier. `rjsonpath` implements
+[JSONPath](http://goessner.net/articles/JsonPath/), a 
+selector / querying language for JSON, similar to XPath for 
+XML.
+
+## Install
+
+Install from github with:
+
+```{r eval=FALSE}
+devtools::install_github("blmoore/rjsonpath")
+```
+
+
+## Usage
+
+As an example, take this simple JSON:
+
+```{javascript}
+{"menu": {
+  "id": "file",
+  "value": "File",
+  "popup": {
+    "menuitem": [
+      {"value": "New", "onclick": "CreateNewDoc()"},
+      {"value": "Open", "onclick": "OpenDoc()"},
+      {"value": "Close", "onclick": "CloseDoc()"}
+    ]
+  }
+}}
+```
+
+```{r write_json_object, echo = FALSE}
+json <- '{"menu": {
+  "id": "file",
+  "value": "File",
+  "popup": {
+    "menuitem": [
+      {"value": "New", "onclick": "CreateNewDoc()"},
+      {"value": "Open", "onclick": "OpenDoc()"},
+      {"value": "Close", "onclick": "CloseDoc()"}
+    ]
+  }
+}}'
+json <- RJSONIO::fromJSON(json)
+library(rjsonpath)
+```
+
+Via `read_json` this can be read into R as:
+
+```{r}
+json
+```
+
+Pretty horrible right? To gather all the `onclick` methods 
+into a vector with base R you might write:
+
+```{r}
+sapply(json$menu$popup$menuitem, `[[`, "onclick")
+```
+
+Using `rjsonpath` this could instead be:
+
+```{r, message=FALSE}
+json_path(json, "$.menu.popup.menuitem[*].onclick")
+```
+
+Or even just:
+
+```{r, message=FALSE}
+json_path(json, "$..onclick")
+```
+
+For more more complex examples, see [below](#Advanced expressions).
+
+## Advanced expressions
+
+
+
+
+
 
