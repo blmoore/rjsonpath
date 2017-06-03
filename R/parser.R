@@ -9,11 +9,8 @@ add_pieces <- function(piece1, piece2, ...) {
   paste(piece1, piece2, ..., sep = ";")
 }
 
-is_number <- function(string) {
-  suppressWarnings(!any(is.na(as.numeric(string))))
-}
 
-get_piece <- function(json, piece, zero_index) {
+get_piece <- function(json, piece) {
 
   if (is.null(json)) {
     stop("searching empty json object for: ", piece)
@@ -21,8 +18,7 @@ get_piece <- function(json, piece, zero_index) {
 
   # numeric index of list
   if (is_number(piece)) {
-    index <- if (zero_index) as.numeric(piece) + 1 else as.numeric(piece)
-    return(json[[index]])
+    return(json[[as.numeric(piece)]])
   }
 
   # json subset
@@ -104,11 +100,10 @@ walk_tree <- function(piece, remaining, json, processed, recurse = FALSE) {
 }
 
 # apply a python-style [start:end:step] index
-slice <- function(piece, json, zero_index=TRUE) {
+slice <- function(piece, json) {
   index <- sub("\\[(.*?)\\].*", "\\1", piece)
   indices <- stringr::str_split_fixed(":", index, 2)
   range <- as.numeric(stringr::str_split_fixed(index, ":", 2))
-  range <- if (zero_index) range + 1 else range
   `[`(json, seq(range[[1]], range[[2]]))
 }
 
@@ -129,9 +124,17 @@ format_path <- function(jsonpath) {
   normed_path
 }
 
+# convert normalised 0-indexed path to 1-indexed
+adjust_indices <- function(jsonpath) {
+  path_parts <- stringr::str_split(jsonpath, ";", simplify = TRUE)
+  numbered <- vapply(path_parts, rjsonpath:::is_number, logical(1))
+  path_parts[numbered] <- as.numeric(path_parts[numbered]) + 1
+  paste(path_parts, collapse = ";")
+}
+
 # dispatch on piece and process simple subsetting
 # primary recursive function
-process_piece <- function(jsonpath, json, processed, zero_index=TRUE) {
+process_piece <- function(jsonpath, json, processed) {
 
   message("\n --- new recursion --- ")
   message("current path: ", jsonpath, "\n",
@@ -159,11 +162,11 @@ process_piece <- function(jsonpath, json, processed, zero_index=TRUE) {
           json <- walk_tree(this_piece, todo, json, processed, recurse = TRUE)
         } else {
           if (grepl(":", this_piece)) {
-            json <- slice(this_piece, json, zero_index = zero_index)
+            json <- slice(this_piece, json)
             #stop("range not implemented")
           } else {
             # piece label
-            json <- Recall(todo, get_piece(json, this_piece, zero_index = TRUE),
+            json <- Recall(todo, get_piece(json, this_piece),
               add_pieces(processed, this_piece))
           }
         }
