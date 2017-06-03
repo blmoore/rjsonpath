@@ -53,7 +53,65 @@
 <div class="page-header"><h1 class="hasAnchor">
 <a href="#rjsonpath" class="anchor"></a>rjsonpath</h1></div>
 
-<p>rjsonpath implements <a href="http://goessner.net/articles/JsonPath/">JSONPath</a> in R. JSONPath is a selector / querying language for JSON, similar to XPath for XML.</p>
+<p>Reading JSON into R usually leaves you with some deeply-nested list objects which are a pain to munge and navigate — applying path expressions is one way to make this easier. <code>rjsonpath</code> implements <a href="http://goessner.net/articles/JsonPath/">JSONPath</a>, a selector / querying language for JSON, similar to XPath for XML.</p>
+<div id="install" class="section level2">
+<h2 class="hasAnchor">
+<a href="#install" class="anchor"></a>Install</h2>
+<p>Install from github with:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">devtools::<span class="kw">install_github</span>(<span class="st">"blmoore/rjsonpath"</span>)</code></pre></div>
+</div>
+<div id="usage" class="section level2">
+<h2 class="hasAnchor">
+<a href="#usage" class="anchor"></a>Usage</h2>
+<p>As an example, take this simple JSON:</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="op">{</span><span class="st">"menu"</span><span class="op">:</span> <span class="op">{</span>
+  <span class="st">"id"</span><span class="op">:</span> <span class="st">"file"</span><span class="op">,</span>
+  <span class="st">"value"</span><span class="op">:</span> <span class="st">"File"</span><span class="op">,</span>
+  <span class="st">"popup"</span><span class="op">:</span> <span class="op">{</span>
+    <span class="st">"menuitem"</span><span class="op">:</span> [
+      <span class="op">{</span><span class="st">"value"</span><span class="op">:</span> <span class="st">"New"</span><span class="op">,</span> <span class="st">"onclick"</span><span class="op">:</span> <span class="st">"CreateNewDoc()"</span><span class="op">},</span>
+      <span class="op">{</span><span class="st">"value"</span><span class="op">:</span> <span class="st">"Open"</span><span class="op">,</span> <span class="st">"onclick"</span><span class="op">:</span> <span class="st">"OpenDoc()"</span><span class="op">},</span>
+      <span class="op">{</span><span class="st">"value"</span><span class="op">:</span> <span class="st">"Close"</span><span class="op">,</span> <span class="st">"onclick"</span><span class="op">:</span> <span class="st">"CloseDoc()"</span><span class="op">}</span>
+    ]
+  <span class="op">}</span>
+<span class="op">}}</span></code></pre></div>
+<p>Via <code>read_json</code> this can be read into R as:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">json
+<span class="co">#&gt; $menu</span>
+<span class="co">#&gt; $menu$id</span>
+<span class="co">#&gt; [1] "file"</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; $menu$value</span>
+<span class="co">#&gt; [1] "File"</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; $menu$popup</span>
+<span class="co">#&gt; $menu$popup$menuitem</span>
+<span class="co">#&gt; $menu$popup$menuitem[[1]]</span>
+<span class="co">#&gt;            value          onclick </span>
+<span class="co">#&gt;            "New" "CreateNewDoc()" </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; $menu$popup$menuitem[[2]]</span>
+<span class="co">#&gt;       value     onclick </span>
+<span class="co">#&gt;      "Open" "OpenDoc()" </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; $menu$popup$menuitem[[3]]</span>
+<span class="co">#&gt;        value      onclick </span>
+<span class="co">#&gt;      "Close" "CloseDoc()"</span></code></pre></div>
+<p>Pretty horrible right? To gather all the <code>onclick</code> methods into a vector with base R you might write:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">sapply</span>(json$menu$popup$menuitem, <span class="st">`</span><span class="dt">[[</span><span class="st">`</span>, <span class="st">"onclick"</span>)
+<span class="co">#&gt; [1] "CreateNewDoc()" "OpenDoc()"      "CloseDoc()"</span></code></pre></div>
+<p>Using <code>rjsonpath</code> this could instead be:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw"><a href="reference/json_path.html">json_path</a></span>(json, <span class="st">"$.menu.popup.menuitem[*].onclick"</span>)
+<span class="co">#&gt; [1] "CreateNewDoc()" "OpenDoc()"      "CloseDoc()"</span></code></pre></div>
+<p>Or even just:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw"><a href="reference/json_path.html">json_path</a></span>(json, <span class="st">"$..onclick"</span>)
+<span class="co">#&gt; [1] "CreateNewDoc()" "OpenDoc()"      "CloseDoc()"</span></code></pre></div>
+<p>For more more complex examples, see <a href="#Advanced%20expressions">below</a>.</p>
+</div>
+<div id="advanced-expressions" class="section level2">
+<h2 class="hasAnchor">
+<a href="#advanced-expressions" class="anchor"></a>Advanced expressions</h2>
+</div>
 </div>
 </div>
   </div>
