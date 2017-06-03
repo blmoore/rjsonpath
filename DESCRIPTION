@@ -11,5 +11,6 @@ LazyData: true
 RoxygenNote: 6.0.1
 Suggests: testthat
 Imports: jsonlite,
+    magrittr,
     stringr,
     purrr

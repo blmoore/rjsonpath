@@ -3,3 +3,4 @@
 export(json_path)
 export(read_json)
 importFrom(jsonlite,read_json)
+importFrom(magrittr,"%>%")
