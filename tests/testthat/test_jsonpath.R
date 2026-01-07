@@ -52,4 +52,12 @@ test_that("named objects can be omitted", {
 })
 
 test_that("single-quoted dots work in member names", {
+  special <- list(
+    "key.with.dots" = list(value = "a")
+  )
+
+  expect_equal(
+    json_path(special, "$['key.with.dots'].value"),
+    "a"
+  )
 })
