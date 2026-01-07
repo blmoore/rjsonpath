@@ -33,12 +33,12 @@
 json_path <- function(json, path, strict = TRUE,
   zero_index = TRUE, simplify = TRUE) {
 
-  if (!class(json) == "list") {
+  if (!is.list(json)) {
     stop("json must be a list produced by read_json")
   }
 
-  if (strict & substr(path, 0, 2) != "$.") {
-    stop("JSONPath expression must start with '$.'")
+  if (strict && !grepl("^\\$", path)) {
+    stop("JSONPath expression must start with '$'")
   }
 
   normed_path <- format_path(path)
@@ -46,11 +46,14 @@ json_path <- function(json, path, strict = TRUE,
     normed_path <- adjust_indices(normed_path)
   }
 
-  message("processing ", normed_path)
-  results <- process_piece(normed_path, json, "")
+  results <- process_piece(normed_path, json, "", zero_index)
 
   if (simplify) {
-    if (!is_nested(results)) {
+    # Only simplify if result is not a single named list (object)
+    # Objects should preserve their structure
+    if (!is_nested(results) && (is.null(names(results)) || length(results) == 0 || 
+        any(vapply(results, is.list, logical(1))))) {
+      # Only unlist if it's an array of atomic values
       results <- unlist(results)
     }
   }

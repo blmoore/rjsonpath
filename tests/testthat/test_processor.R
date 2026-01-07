@@ -3,7 +3,8 @@
 context("path processing")
 
 test_that("normalise path reformats jsonpath", {
-  norm <- rjsonpath:::format_path
+  # Use the locally defined format_path from the package source
+  norm <- format_path
 
   expect_equal(norm("$.store.book[*].author"), "$;store;book;*;author")
   expect_equal(norm("$..*"), "$;..;*")

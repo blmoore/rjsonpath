@@ -65,7 +65,7 @@ test_that("$..book[?(@.isbn)] selects books with isbns", {
 })
 
 test_that("$..book[?(@.price<10)] gets all books cheaper than 10", {
-  cheap_books <- json_path(json, "$..book[?(@.price<10)]")
+  cheap_books <- json_path(json, "$..book[?(@.price<10)]", simplify = FALSE)
 
   books <- json$store$book
   index <- unlist(lapply(books, function(x) x$price < 10))
@@ -76,6 +76,10 @@ test_that("$..book[?(@.price<10)] gets all books cheaper than 10", {
 test_that("$..* gets all all elements in tree", {
   all_elem <- json_path(json, "$..*")
 
-  # TODO: what should this show, a flattened structure?
-
+  # Should include the top-level store object ...
+  expect_true(is.list(all_elem))
+  expect_gte(length(all_elem), 10)
+  expect_equal(all_elem[[1]], json$store)
+  # ... and the bicycle object somewhere in the result
+  expect_true(any(vapply(all_elem, identical, logical(1), json$store$bicycle)))
 })
