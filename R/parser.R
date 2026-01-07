@@ -109,11 +109,8 @@ get_anywhere <- function(jpath, json) {
         # It's an array
         for (i in seq_along(obj)) {
           if (is.list(obj[[i]])) {
-            # Check if array element has the key directly
-            if (!is.null(names(obj[[i]])) && key %in% names(obj[[i]])) {
-              matches <<- c(matches, list(obj[[i]][[key]]))
-            }
-            # Recursively search the element
+            # Recursively search children of array element
+            # (don't check the element itself here - that's handled in the recursive call)
             search_recursive(obj[[i]], key)
           }
         }

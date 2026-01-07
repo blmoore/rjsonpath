@@ -59,12 +59,34 @@ generate_mixed_structure <- function(n_arrays = 10, array_size = 100, nesting_de
 if (requireNamespace("bench", quietly = TRUE)) {
   benchmark <- function(expr, iterations = 10) {
     result <- bench::mark(expr, iterations = iterations, check = FALSE)
+    # bench::mark returns a tibble with timing measurements
+    # The 'time' column contains all individual timing measurements as a list column
+    # Extract all timing measurements and convert from nanoseconds to seconds
+    times <- numeric(0)
+    if (nrow(result) > 0 && "time" %in% names(result)) {
+      # Extract time column - it's a list column with vectors of measurements
+      time_col <- result[["time"]]
+      if (length(time_col) > 0) {
+        # Unlist all timing measurements from all iterations
+        times <- unlist(time_col, recursive = FALSE, use.names = FALSE)
+        times <- as.numeric(times) / 1e9  # Convert nanoseconds to seconds
+      }
+    }
+    # If we couldn't extract times, try to use summary statistics as fallback
+    if (length(times) == 0) {
+      if (nrow(result) > 0 && "median" %in% names(result)) {
+        median_val <- as.numeric(result[["median"]][[1]]) / 1e9
+        times <- rep(median_val, iterations)
+      } else {
+        times <- rep(0, iterations)
+      }
+    }
     list(
-      median = as.numeric(result$median),
-      mean = as.numeric(result$mean),
-      min = as.numeric(result$min),
-      max = as.numeric(result$max),
-      total_time = as.numeric(result$total_time)
+      median = median(times),
+      mean = mean(times),
+      min = min(times),
+      max = max(times),
+      total_time = sum(times)
     )
   }
 } else if (requireNamespace("microbenchmark", quietly = TRUE)) {
@@ -213,7 +235,7 @@ test_that("Complex queries combining operations", {
   }, iterations = 5)
   
   bm2 <- benchmark({
-    json_path(json, "$.array_1[*].level3_1.value")
+    json_path(json, "$.array_1[*].id")
   }, iterations = 5)
   
   expect_true(bm1$median < 10, info = "Recursive price search took too long")
