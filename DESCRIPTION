@@ -1,7 +1,7 @@
 Package: rjsonpath
 Type: Package
 Title: JSONPath implementation in R
-Version: 0.0.1
+Version: 0.9.0
 Authors@R: person("Ben", "Moore", email = "ben@blm.io",
   role = c("aut", "cre"))
 Description: Selector syntax for JSON data.
