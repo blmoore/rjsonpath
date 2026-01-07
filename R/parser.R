@@ -99,24 +99,32 @@ get_anywhere <- function(jpath, json) {
     }
     
     # Check if current object has the key
+    key_found <- FALSE
     if (!is.null(names(obj)) && key %in% names(obj)) {
       matches <<- c(matches, list(obj[[key]]))
+      key_found <- TRUE
     }
 
     # Recursively search children
+    # IMPORTANT: If we found the key in this object, we should NOT search inside
+    # the matched value, because we've already found what we're looking for.
+    # We want to find the key at different branches, not search inside matches.
     if (is.list(obj) && length(obj) > 0) {
       if (is.null(names(obj))) {
-        # It's an array
+        # It's an array - search each element
         for (i in seq_along(obj)) {
           if (is.list(obj[[i]])) {
-            # Recursively search children of array element
-            # (don't check the element itself here - that's handled in the recursive call)
             search_recursive(obj[[i]], key)
           }
         }
       } else {
-        # It's an object, search all values
+        # It's an object - search all values EXCEPT the one that matched the key
         for (i in seq_along(obj)) {
+          # Skip searching inside the matched value if we found the key
+          if (key_found && names(obj)[i] == key) {
+            # Don't search inside the matched value - we've already added it
+            next
+          }
           if (is.list(obj[[i]])) {
             search_recursive(obj[[i]], key)
           }
