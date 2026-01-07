@@ -23,12 +23,7 @@ jobs:
           name: Run tests
           command: |
             mkdir -p test-results
-            Rscript -e "
-            library(testthat)
-            library(rjsonpath)
-            junit_reporter <- JunitReporter$new(file = 'test-results/junit.xml')
-            test_check('rjsonpath', reporter = junit_reporter)
-            "
+            Rscript -e 'library(testthat); library(devtools); junit_reporter <- testthat::JunitReporter$new(file = "test-results/junit.xml"); devtools::test(reporter = junit_reporter)'
       - store_test_results:
           path: test-results
       - store_artifacts:
