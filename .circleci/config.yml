@@ -24,7 +24,7 @@ jobs:
           command: |
             mkdir -p test-results
             PROJECT_ROOT=$(pwd)
-            Rscript -e "library(testthat); library(devtools); project_root <- Sys.getenv('PROJECT_ROOT', getwd()); junit_file <- file.path(project_root, 'test-results', 'junit.xml'); junit_reporter <- testthat::JunitReporter$new(file = junit_file); devtools::test(reporter = junit_reporter)"
+            Rscript -e "library(testthat); library(devtools); load_all('.'); project_root <- Sys.getenv('PROJECT_ROOT', getwd()); junit_file <- file.path(project_root, 'test-results', 'junit.xml'); junit_reporter <- testthat::JunitReporter$new(file = junit_file); testthat::test_dir('tests/testthat', reporter = junit_reporter)"
       - store_test_results:
           path: test-results
       - store_artifacts:
