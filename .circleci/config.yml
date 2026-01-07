@@ -22,7 +22,13 @@ jobs:
       - run:
           name: Run tests
           command: |
-            Rscript -e "devtools::test()"
+            mkdir -p test-results
+            Rscript -e "devtools::test(reporter = testthat::JunitReporter$new(file = 'test-results/junit.xml'))"
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: test-results
+          destination: test-results
 
 workflows:
   version: 2

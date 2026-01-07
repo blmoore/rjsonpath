@@ -45,12 +45,15 @@ get_piece <- function(json, piece, zero_index = TRUE) {
   
   piece <- piece_clean
 
+  # Cache names(json) to avoid repeated calls
+  json_names <- names(json)
+  
   # json subset
-  if (piece %in% names(json)) {
-    if (!anyDuplicated(names(json))) {
+  if (!is.null(json_names) && piece %in% json_names) {
+    if (!anyDuplicated(json_names)) {
       out_json <- json[[piece]]
     } else {
-      out_json <- json[names(json) == piece]
+      out_json <- json[json_names == piece]
       if (length(out_json) == 1) {
         out_json <- out_json[[1]]
       }
@@ -58,26 +61,33 @@ get_piece <- function(json, piece, zero_index = TRUE) {
     return(out_json)
   }
   
-  if (is.list(json) && length(json) > 0 && !is.null(names(json[[1]]))) {
-    # Optimize: avoid unique(unlist(...)) by checking directly
-    # Process array elements more efficiently
-    json_len <- length(json)
-    out_json <- vector("list", json_len)
-    out_count <- 0L
+  if (is.list(json) && length(json) > 0) {
+    # Check first element to determine if it's an object array
+    first_elem <- json[[1]]
+    first_elem_names <- names(first_elem)
     
-    for (i in seq_len(json_len)) {
-      if (piece %in% names(json[[i]])) {
-        out_count <- out_count + 1L
-        out_json[[out_count]] <- json[[i]][[piece]]
+    if (!is.null(first_elem_names)) {
+      # Optimize: avoid unique(unlist(...)) by checking directly
+      # Process array elements more efficiently
+      json_len <- length(json)
+      out_json <- vector("list", json_len)
+      out_count <- 0L
+      
+      for (i in seq_len(json_len)) {
+        elem_names <- names(json[[i]])
+        if (!is.null(elem_names) && piece %in% elem_names) {
+          out_count <- out_count + 1L
+          out_json[[out_count]] <- json[[i]][[piece]]
+        }
       }
-    }
-    
-    if (out_count > 0L) {
-      # Trim to actual length and return
-      if (out_count == 1L) {
-        return(out_json[[1L]])
+      
+      if (out_count > 0L) {
+        # Trim to actual length and return
+        if (out_count == 1L) {
+          return(out_json[[1L]])
+        }
+        return(out_json[1:out_count])
       }
-      return(out_json[1:out_count])
     }
   }
   
@@ -89,19 +99,28 @@ get_anywhere <- function(jpath, json) {
   jpath_parts <- consume_part(jpath)
   search_key <- jpath_parts[[1]]
 
-  # Use a closure with a list to collect results more efficiently
-  # This avoids repeated c() operations which are expensive
-  matches <- list()
+  # Pre-allocate matches list with exponential growth to avoid O(n²) complexity
+  # Start with capacity of 100, double when needed
+  initial_capacity <- 100L
+  matches <- vector("list", initial_capacity)
+  match_count <- 0L
   
   search_recursive <- function(obj, key) {
     if (!is.list(obj)) {
       return(invisible(NULL))
     }
     
+    # Cache names check
+    obj_names <- names(obj)
     # Check if current object has the key
     key_found <- FALSE
-    if (!is.null(names(obj)) && key %in% names(obj)) {
-      matches <<- c(matches, list(obj[[key]]))
+    if (!is.null(obj_names) && key %in% obj_names) {
+      # Grow list if needed (exponential growth)
+      if (match_count >= length(matches)) {
+        length(matches) <- length(matches) * 2L
+      }
+      match_count <<- match_count + 1L
+      matches[[match_count]] <<- obj[[key]]
       key_found <- TRUE
     }
 
@@ -110,7 +129,7 @@ get_anywhere <- function(jpath, json) {
     # the matched value, because we've already found what we're looking for.
     # We want to find the key at different branches, not search inside matches.
     if (is.list(obj) && length(obj) > 0) {
-      if (is.null(names(obj))) {
+      if (is.null(obj_names)) {
         # It's an array - search each element
         for (i in seq_along(obj)) {
           if (is.list(obj[[i]])) {
@@ -121,7 +140,7 @@ get_anywhere <- function(jpath, json) {
         # It's an object - search all values EXCEPT the one that matched the key
         for (i in seq_along(obj)) {
           # Skip searching inside the matched value if we found the key
-          if (key_found && names(obj)[i] == key) {
+          if (key_found && obj_names[i] == key) {
             # Don't search inside the matched value - we've already added it
             next
           }
@@ -137,8 +156,13 @@ get_anywhere <- function(jpath, json) {
   
   search_recursive(json, search_key)
 
-  if (length(matches) == 0) {
+  # Trim to actual size
+  if (match_count == 0) {
     return(list())
+  }
+  
+  if (match_count < length(matches)) {
+    matches <- matches[1:match_count]
   }
 
   matches
@@ -150,26 +174,36 @@ walk_tree <- function(piece, remaining, json, processed, recurse = FALSE) {
   next_piece <- downstream[[1]]
   todo <- downstream[[2]]
 
-  if (next_piece %in% names(json)) {
+  # Cache names(json) to avoid repeated calls
+  json_names <- names(json)
+  if (!is.null(json_names) && next_piece %in% json_names) {
     out_json <- json[[next_piece]]
   } else {
     # assume array - optimize by checking directly instead of unique(unlist(...))
     json_len <- length(json)
     found <- FALSE
-    if (json_len > 0 && !is.null(names(json[[1]]))) {
-      # Quick check if key exists in any element
-      for (i in seq_len(json_len)) {
-        if (next_piece %in% names(json[[i]])) {
-          found <- TRUE
-          break
+    if (json_len > 0) {
+      # Check first element to determine structure
+      first_elem_names <- names(json[[1]])
+      if (!is.null(first_elem_names)) {
+        # Quick check if key exists in any element
+        for (i in seq_len(json_len)) {
+          elem_names <- names(json[[i]])
+          if (!is.null(elem_names) && next_piece %in% elem_names) {
+            found <- TRUE
+            break
+          }
         }
-      }
-      if (found) {
-        out_json <- lapply(json, function(x) {
-          if (next_piece %in% names(x)) x[[next_piece]] else NULL
-        })
-        # Remove NULLs
-        out_json <- out_json[!vapply(out_json, is.null, logical(1))]
+        if (found) {
+          out_json <- lapply(json, function(x) {
+            x_names <- names(x)
+            if (!is.null(x_names) && next_piece %in% x_names) x[[next_piece]] else NULL
+          })
+          # Remove NULLs
+          out_json <- out_json[!vapply(out_json, is.null, logical(1))]
+        } else {
+          stop("walk_tree: ", next_piece, " not found in json")
+        }
       } else {
         stop("walk_tree: ", next_piece, " not found in json")
       }
@@ -421,14 +455,26 @@ process_piece <- function(jsonpath, json, processed, zero_index = TRUE) {
     
     # Special case: ..* means recursively get all elements
     if (search_key == "*") {
-      # Recursively collect all values using a closure for efficiency
-      all_results <- list()
+      # Recursively collect all values using pre-allocated list for efficiency
+      # Pre-allocate with exponential growth to avoid O(n²) complexity
+      initial_capacity <- 100L
+      all_results <- vector("list", initial_capacity)
+      result_count <- 0L
       
       collect_all <- function(obj) {
         if (is.list(obj)) {
-          if (!is.null(names(obj))) {
+          obj_names <- names(obj)
+          if (!is.null(obj_names)) {
             # It's an object, add all values
-            all_results <<- c(all_results, as.list(obj))
+            obj_len <- length(obj)
+            # Grow if needed
+            while (result_count + obj_len > length(all_results)) {
+              length(all_results) <- length(all_results) * 2L
+            }
+            for (i in seq_along(obj)) {
+              result_count <<- result_count + 1L
+              all_results[[result_count]] <<- obj[[i]]
+            }
             # Recursively collect from each value
             for (val in obj) {
               if (is.list(val)) {
@@ -441,16 +487,31 @@ process_piece <- function(jsonpath, json, processed, zero_index = TRUE) {
               if (is.list(item)) {
                 collect_all(item)
               } else {
-                all_results <<- c(all_results, list(item))
+                # Grow if needed
+                if (result_count >= length(all_results)) {
+                  length(all_results) <- length(all_results) * 2L
+                }
+                result_count <<- result_count + 1L
+                all_results[[result_count]] <<- item
               }
             }
           }
         } else {
-          all_results <<- c(all_results, list(obj))
+          # Grow if needed
+          if (result_count >= length(all_results)) {
+            length(all_results) <- length(all_results) * 2L
+          }
+          result_count <<- result_count + 1L
+          all_results[[result_count]] <<- obj
         }
         invisible(NULL)
       }
       collect_all(json)
+      
+      # Trim to actual size
+      if (result_count < length(all_results)) {
+        all_results <- all_results[1:result_count]
+      }
       results <- all_results
       if (remaining_path != "") {
         processed_results <- lapply(results, function(result) {
@@ -501,13 +562,15 @@ process_piece <- function(jsonpath, json, processed, zero_index = TRUE) {
   # Handle wildcard
   if (this_piece == "*") {
     if (is.list(json) && length(json) > 0) {
-      if (!is.null(names(json))) {
+      # Cache names(json) to avoid repeated calls
+      json_names <- names(json)
+      if (!is.null(json_names)) {
         # It's an object, return all values
         if (todo == "") {
           return(json)
         }
         # Process further with each value
-        results <- lapply(names(json), function(key) {
+        results <- lapply(json_names, function(key) {
           process_piece(todo, json[[key]], add_pieces(processed, this_piece, key), zero_index)
         })
         return(unlist(results, recursive = FALSE))
@@ -562,7 +625,10 @@ process_piece <- function(jsonpath, json, processed, zero_index = TRUE) {
       return(list())
     }
     # Filters only work on arrays (unnamed lists), not objects
-    if (!is.null(names(json)) && length(names(json)) == length(json)) {
+    # Cache names(json) and length check
+    json_names <- names(json)
+    json_len <- length(json)
+    if (!is.null(json_names) && length(json_names) == json_len) {
       # It's an object, not an array - can't filter
       return(list())
     }
@@ -593,7 +659,10 @@ process_piece <- function(jsonpath, json, processed, zero_index = TRUE) {
       return(NULL)
     }
     # Script expressions only work on arrays (unnamed lists)
-    if (!is.null(names(json)) && length(names(json)) == length(json)) {
+    # Cache names(json) and length check
+    json_names <- names(json)
+    json_len <- length(json)
+    if (!is.null(json_names) && length(json_names) == json_len) {
       # It's an object, not an array
       return(NULL)
     }
@@ -623,10 +692,12 @@ process_piece <- function(jsonpath, json, processed, zero_index = TRUE) {
     idx <- as.numeric(this_piece)
     # Handle negative indices
     if (idx < 0) {
-      if (!is.list(json) || length(json) == 0 || (!is.null(names(json)) && length(names(json)) == length(json))) {
+      json_len <- length(json)
+      json_names <- names(json)
+      if (!is.list(json) || json_len == 0 || (!is.null(json_names) && length(json_names) == json_len)) {
         return(NULL)
       }
-      idx <- length(json) + idx + 1
+      idx <- json_len + idx + 1
     }
     # Note: if zero_index was TRUE and idx >= 0, indices were already adjusted
     if (idx < 1 || idx > length(json)) {
@@ -664,10 +735,13 @@ process_piece <- function(jsonpath, json, processed, zero_index = TRUE) {
     return(next_json)
   }, error = function(e) {
     # If key not found and we're in an array context, try array-style access
-    if (is.list(json) && length(json) > 0 && is.null(names(json))) {
+    json_len <- length(json)
+    json_names <- names(json)
+    if (is.list(json) && json_len > 0 && is.null(json_names)) {
       # It's an array, try to access property on each element
       results <- lapply(json, function(item) {
-        if (is.list(item) && this_piece %in% names(item)) {
+        item_names <- names(item)
+        if (is.list(item) && !is.null(item_names) && this_piece %in% item_names) {
           if (todo != "") {
             return(process_piece(todo, item[[this_piece]], add_pieces(processed, this_piece), zero_index))
           }
