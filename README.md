@@ -3,7 +3,7 @@
 
 # rjsonpath
 
-[![travis_status](https://travis-ci.org/blmoore/rjsonpath.svg?branch=master)](https://travis-ci.org/blmoore/rjsonpath)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/blmoore/rjsonpath/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/blmoore/rjsonpath/tree/master)
 [![codecov](https://codecov.io/gh/blmoore/rjsonpath/branch/master/graph/badge.svg)](https://codecov.io/gh/blmoore/rjsonpath)
 [![docs_badge](https://img.shields.io/badge/docs-latest-blue.svg)](http://blm.io/rjsonpath)
 [![CRAN_badge](http://www.r-pkg.org/badges/version/rjsonpath)](https://cran.r-project.org/package=rjsonpath)
@@ -170,7 +170,7 @@ Performance benchmarks on a large JSON object (10,000 element array):
 
     #> | Operation | Median Time | Mean Time |
     #> |-----------|-------------|-----------|
-    #> | Simple property access (`$.data[*].name`) | 266.6 ms | 281.8 ms |
-    #> | Filter expression (`$.data[?(@.price<50)]`) | 834.0 ms | 835.8 ms |
-    #> | Recursive descent (`$..target`) | 0.14 ms | 0.19 ms |
-    #> | Array slice (`$.data[0:100]`) | 0.3 ms | 0.3 ms |
+    #> | Simple property access (`$.data[*].name`) | 259.0 ms | 266.4 ms |
+    #> | Filter expression (`$.data[?(@.price<50)]`) | 834.8 ms | 839.6 ms |
+    #> | Recursive descent (`$..target`) | 0.13 ms | 0.16 ms |
+    #> | Array slice (`$.data[0:100]`) | 0.2 ms | 0.3 ms |
