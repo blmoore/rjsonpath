@@ -1,0 +1,38 @@
+version: 2.1
+
+jobs:
+  test:
+    docker:
+      - image: rocker/tidyverse:latest
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - r-packages-v1-{{ checksum "DESCRIPTION" }}
+      - run:
+          name: Install dependencies
+          command: |
+            Rscript -e "if (!require('remotes')) install.packages('remotes', repos = 'https://cran.rstudio.com')"
+            Rscript -e "remotes::install_deps(dependencies = TRUE)"
+            Rscript -e "devtools::install('.', dependencies = FALSE)"
+      - save_cache:
+          paths:
+            - /usr/local/lib/R/site-library
+          key: r-packages-v1-{{ checksum "DESCRIPTION" }}
+      - run:
+          name: Run tests
+          command: |
+            mkdir -p test-results
+            PROJECT_ROOT=$(pwd)
+            Rscript -e "library(testthat); library(devtools); load_all('.'); project_root <- Sys.getenv('PROJECT_ROOT', getwd()); junit_file <- file.path(project_root, 'test-results', 'junit.xml'); junit_reporter <- testthat::JunitReporter\$new(file = junit_file); testthat::test_dir('tests/testthat', reporter = junit_reporter)"
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: test-results
+          destination: test-results
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - test

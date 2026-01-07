@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
 ```
 
 # rjsonpath
-[![travis_status](https://travis-ci.org/blmoore/rjsonpath.svg?branch=master)](https://travis-ci.org/blmoore/rjsonpath)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/blmoore/rjsonpath/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/blmoore/rjsonpath/tree/master)
 [![codecov](https://codecov.io/gh/blmoore/rjsonpath/branch/master/graph/badge.svg)](https://codecov.io/gh/blmoore/rjsonpath)
 [![docs_badge](https://img.shields.io/badge/docs-latest-blue.svg)](http://blm.io/rjsonpath)
 [![CRAN_badge](http://www.r-pkg.org/badges/version/rjsonpath)](https://cran.r-project.org/package=rjsonpath)
@@ -38,7 +38,7 @@ devtools::install_github("blmoore/rjsonpath")
 
 As an example, take this simple JSON:
 
-```{js}
+```json
 {"menu": {
   "id": "file",
   "value": "File",
@@ -188,7 +188,7 @@ json_path(store, "$.store.book[0,3].title")
 
 Performance benchmarks on a large JSON object (10,000 element array):
 
-```{r performance, echo = FALSE, message = FALSE, warning = FALSE}
+```{r performance, echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
 # Generate large test data
 generate_large_array <- function(n) {
   lapply(1:n, function(i) {
