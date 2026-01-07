@@ -48,14 +48,11 @@ json_path <- function(json, path, strict = TRUE,
 
   results <- process_piece(normed_path, json, "", zero_index)
 
-  if (simplify) {
-    # Only simplify if result is not a single named list (object)
-    # Objects should preserve their structure
-    if (!is_nested(results) && (is.null(names(results)) || length(results) == 0 || 
-        any(vapply(results, is.list, logical(1))))) {
-      # Only unlist if it's an array of atomic values
-      results <- unlist(results)
-    }
+  if (simplify &&
+      !is_nested(results) &&
+      (is.null(names(results)) || length(results) == 0 ||
+       any(vapply(results, is.list, logical(1))))) {
+    results <- unlist(results)
   }
 
   results

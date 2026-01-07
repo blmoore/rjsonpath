@@ -73,7 +73,8 @@ test_that("readme filter example: cheap books", {
     character(1)
   )
   expected <- stats::na.omit(expected)
-  expect_identical(titles, unname(expected))
+  attributes(expected) <- NULL
+  expect_equal(titles, unname(expected))
 })
 
 test_that("readme filter example: books with isbn", {
@@ -84,7 +85,8 @@ test_that("readme filter example: books with isbn", {
     character(1)
   )
   expected <- stats::na.omit(expected)
-  expect_identical(titles, unname(expected))
+  attributes(expected) <- NULL
+  expect_equal(titles, unname(expected))
 })
 
 test_that("readme recursive price example matches manual extraction", {

@@ -8,8 +8,10 @@ Description: Selector syntax for JSON data.
 License: MIT
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 6.0.1
-Suggests: testthat
+RoxygenNote: 7.3.3
+Suggests: testthat,
+    bench,
+    microbenchmark
 Imports: jsonlite,
     magrittr,
     stringr,

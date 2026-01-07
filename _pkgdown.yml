@@ -2,6 +2,9 @@ template:
   params:
     bootswatch: cosmo
 reference:
+  - title: Package
+    contents:
+      - rjsonpath
   - title: Functions
     desc:  Main rjsonpath functions
     contents:

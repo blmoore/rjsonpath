@@ -2,16 +2,13 @@
 
 # take a path and split into a vector of (piece, remaining)
 consume_part <- function(path) {
-  # If no semicolon found, return path as first element and empty string as second
-  if (!grepl(";", path)) {
+  pos <- regexpr(";", path, fixed = TRUE)
+  if (pos == -1) {
     return(c(path, ""))
   }
-  result <- stringr::str_split_fixed(sub("^(.*?);(.*)$", "\\1 \\2", path), " ", 2)
-  # str_split_fixed returns a matrix, convert to vector
-  if (is.matrix(result) && nrow(result) > 0) {
-    return(c(result[1, 1], if (ncol(result) > 1) result[1, 2] else ""))
-  }
-  c(path, "")
+  piece <- substr(path, 1L, pos - 1L)
+  remaining <- substr(path, pos + 1L, nchar(path))
+  c(piece, remaining)
 }
 
 add_pieces <- function(piece1, piece2, ...) {
@@ -25,40 +22,27 @@ get_piece <- function(json, piece, zero_index = TRUE) {
     stop("searching empty json object for: ", piece)
   }
 
-  # Handle quoted keys from bracket notation: 'key' or "key"
-  # Remove surrounding quotes if present
-  original_piece <- piece
   piece_clean <- sub("^['\"](.*)['\"]$", "\\1", piece)
-  
-  # Check if it's a filter expression
+
   if (grepl("^\\?", piece)) {
-    # This should be handled at a higher level with array context
-    return(NULL)
-  }
-  
-  # Check if it's a script expression
-  if (grepl("^\\(", piece) && grepl("@\\.length", piece)) {
-    # This should be handled at a higher level with array context
     return(NULL)
   }
 
-  # Check for numeric index (including negative)
-  # Handle negative indices first (they start with -)
+  if (grepl("^\\(", piece) && grepl("@\\.length", piece)) {
+    return(NULL)
+  }
+
   if (grepl("^-?[0-9]+$", piece_clean)) {
     idx <- as.numeric(piece_clean)
-    # Handle negative indices (relative to end, R uses 1-indexing)
     if (idx < 0) {
       idx <- length(json) + idx + 1
     }
-    # Note: if zero_index was TRUE and idx >= 0, indices were already adjusted
-    # in adjust_indices, so we're working with R's 1-indexed values here
     if (idx < 1 || idx > length(json)) {
       return(NULL)
     }
     return(json[[idx]])
   }
   
-  # Use cleaned piece (without quotes) for key lookup
   piece <- piece_clean
 
   # json subset
@@ -74,23 +58,26 @@ get_piece <- function(json, piece, zero_index = TRUE) {
     return(out_json)
   }
   
-  # If json is an array, check if elements have this property
   if (is.list(json) && length(json) > 0 && !is.null(names(json[[1]]))) {
-    array_names <- unique(unlist(lapply(json, names)))
-    if (piece %in% array_names) {
-      # Extract this property from all elements
-      out_json <- lapply(json, function(x) {
-        if (piece %in% names(x)) {
-          return(x[[piece]])
-        }
-        return(NULL)
-      })
-      # Remove NULLs
-      out_json <- out_json[!vapply(out_json, is.null, logical(1))]
-      if (length(out_json) == 1) {
-        out_json <- out_json[[1]]
+    # Optimize: avoid unique(unlist(...)) by checking directly
+    # Process array elements more efficiently
+    json_len <- length(json)
+    out_json <- vector("list", json_len)
+    out_count <- 0L
+    
+    for (i in seq_len(json_len)) {
+      if (piece %in% names(json[[i]])) {
+        out_count <- out_count + 1L
+        out_json[[out_count]] <- json[[i]][[piece]]
       }
-      return(out_json)
+    }
+    
+    if (out_count > 0L) {
+      # Trim to actual length and return
+      if (out_count == 1L) {
+        return(out_json[[1L]])
+      }
+      return(out_json[1:out_count])
     }
   }
   
@@ -98,74 +85,61 @@ get_piece <- function(json, piece, zero_index = TRUE) {
   stop(piece, " not found in json")
 }
 
-# walk + get all for part (..X) - recursive descent
 get_anywhere <- function(jpath, json) {
-  results <- list()
-  
-  # Extract the key we're searching for
   jpath_parts <- consume_part(jpath)
   search_key <- jpath_parts[[1]]
+
+  # Use a closure with a list to collect results more efficiently
+  # This avoids repeated c() operations which are expensive
+  matches <- list()
   
-  # Recursive function to search through the JSON structure
   search_recursive <- function(obj, key) {
-    matches <- list()
-    
     if (!is.list(obj)) {
-      return(matches)
+      return(invisible(NULL))
     }
     
-    # Check if this object/array has the key directly
+    # Check if current object has the key
     if (!is.null(names(obj)) && key %in% names(obj)) {
-      matches <- c(matches, list(obj[[key]]))
-      # Don't recurse into the value we just found - that would duplicate results
-      return(matches)
+      matches <<- c(matches, list(obj[[key]]))
     }
-    
-    # If obj is an array of objects, check each element
+
+    # Recursively search children
     if (is.list(obj) && length(obj) > 0) {
       if (is.null(names(obj))) {
         # It's an array
         for (i in seq_along(obj)) {
           if (is.list(obj[[i]])) {
-            # Check if this element has the key
+            # Check if array element has the key directly
             if (!is.null(names(obj[[i]])) && key %in% names(obj[[i]])) {
-              matches <- c(matches, list(obj[[i]][[key]]))
-              # Don't recurse into the value we just found
-            } else {
-              # Recursively search deeper only if key not found at this level
-              child_matches <- search_recursive(obj[[i]], key)
-              matches <- c(matches, child_matches)
+              matches <<- c(matches, list(obj[[i]][[key]]))
             }
+            # Recursively search the element
+            search_recursive(obj[[i]], key)
           }
         }
       } else {
-        # It's an object, recursively search all values
+        # It's an object, search all values
         for (i in seq_along(obj)) {
           if (is.list(obj[[i]])) {
-            child_matches <- search_recursive(obj[[i]], key)
-            matches <- c(matches, child_matches)
+            search_recursive(obj[[i]], key)
           }
         }
       }
     }
     
-    matches
+    invisible(NULL)
   }
   
-  results <- search_recursive(json, search_key)
-  
-  if (length(results) == 0) {
+  search_recursive(json, search_key)
+
+  if (length(matches) == 0) {
     return(list())
   }
-  
-  # Flatten results - if all results are the same type and can be combined
-  # For now, just return the list of matches
-  results
+
+  matches
 }
 
 
-# if json object is an array or has named objects,
-# apply fn to each item
 walk_tree <- function(piece, remaining, json, processed, recurse = FALSE) {
   downstream <- consume_part(remaining)
   next_piece <- downstream[[1]]
@@ -174,10 +148,26 @@ walk_tree <- function(piece, remaining, json, processed, recurse = FALSE) {
   if (next_piece %in% names(json)) {
     out_json <- json[[next_piece]]
   } else {
-    # assume array
-    array_names <- unique(unlist(lapply(json, names)))
-    if (next_piece %in% array_names) {
-      out_json <- lapply(json, `[[`, next_piece)
+    # assume array - optimize by checking directly instead of unique(unlist(...))
+    json_len <- length(json)
+    found <- FALSE
+    if (json_len > 0 && !is.null(names(json[[1]]))) {
+      # Quick check if key exists in any element
+      for (i in seq_len(json_len)) {
+        if (next_piece %in% names(json[[i]])) {
+          found <- TRUE
+          break
+        }
+      }
+      if (found) {
+        out_json <- lapply(json, function(x) {
+          if (next_piece %in% names(x)) x[[next_piece]] else NULL
+        })
+        # Remove NULLs
+        out_json <- out_json[!vapply(out_json, is.null, logical(1))]
+      } else {
+        stop("walk_tree: ", next_piece, " not found in json")
+      }
     } else {
       stop("walk_tree: ", next_piece, " not found in json")
     }
@@ -186,45 +176,30 @@ walk_tree <- function(piece, remaining, json, processed, recurse = FALSE) {
   process_piece(todo, out_json, add_pieces(processed, piece, next_piece))
 }
 
-# apply a python-style [start:end:step] index
-# Note: indices are already adjusted for R's 1-indexing by the time we get here
 slice <- function(piece, json, zero_index = TRUE) {
-  # Extract the slice specification (e.g., "0:4:2" or ":-1" or "0,1,2")
-  # The piece might already have the bracket removed, so handle both cases
   index_spec <- piece
   if (grepl("\\[", piece)) {
     index_spec <- sub("^.*?\\[(.*?)\\].*$", "\\1", piece)
   }
-  
-  # Handle non-list values (like character vectors)
+
   if (!is.list(json)) {
-    # Convert to list for processing, then convert back
     was_vector <- !is.list(json)
     json_list <- as.list(json)
     result <- slice(piece, json_list, zero_index)
     if (was_vector && is.list(result)) {
-      # Convert back to vector if original was a vector
       return(unlist(result))
     }
     return(result)
   }
-  
-  # Check if it's a union operator (comma-separated indices)
+
   if (grepl(",", index_spec)) {
     indices <- strsplit(index_spec, ",")[[1]]
     indices <- trimws(indices)
-    # Convert to numeric
     indices_numeric <- suppressWarnings(as.numeric(indices))
-    # Handle NA (for non-numeric indices, skip them)
     indices_numeric <- indices_numeric[!is.na(indices_numeric)]
-    
-    # Note: if zero_index was TRUE, indices were already adjusted in adjust_indices
-    # So we're working with R's 1-indexed values here (non-negative indices)
-    # Handle negative indices (these are relative to end and haven't been adjusted)
     indices_numeric <- ifelse(indices_numeric < 0, 
                               length(json) + indices_numeric + 1, 
                               indices_numeric)
-    # Filter valid indices
     valid_indices <- indices_numeric[indices_numeric >= 1 & indices_numeric <= length(json)]
     if (length(valid_indices) == 0) {
       return(list())
@@ -232,85 +207,49 @@ slice <- function(piece, json, zero_index = TRUE) {
     return(json[valid_indices])
   }
   
-  # Handle slice syntax [start:end:step]
   parts <- strsplit(index_spec, ":")[[1]]
-  
-  # Default values for R's 1-indexing
   len <- length(json)
-  
-  # Parse start, end, step
   if (parts[1] == "") {
     start <- 1
   } else {
     start <- as.numeric(parts[1])
     if (is.na(start)) start <- 1
-    # Handle negative (relative to end, but remember we're 1-indexed now)
     if (start < 0) {
       start <- len + start + 1
     }
   }
   
-  # Track if end was explicitly provided
   end_provided <- length(parts) >= 2 && parts[2] != ""
   
   if (!end_provided) {
-    # Empty end means "go to the end" - don't subtract 1
     end <- len
   } else {
     end <- as.numeric(parts[2])
     if (is.na(end)) {
-      # NA end means "go to the end" - don't subtract 1
       end <- len
       end_provided <- FALSE
+    } else {
+      if (end < 0) {
+        end <- len + end + 1
+        end <- end - 1
       } else {
-        # Handle negative indices first
-        if (end < 0) {
-          end <- len + end + 1
-          # Negative end is also EXCLUSIVE, so subtract 1
-          # For example, [:-1] means "up to but not including the last element"
+        if (end - start > 1) {
           end <- end - 1
-        } else {
-          # JSONPath slice end is EXCLUSIVE (like Python)
-          # If zero_index is TRUE, end was already adjusted by adjust_indices
-          # For [0:2]: becomes [1:3], subtract 1 -> [1:2] gives indices 1,2 ✓
-          # For [2:3]: becomes [3:4], if we subtract 1 -> [3:3] gives just index 3 ✗
-          # But we want indices 3,4 for [2:3], which means we shouldn't subtract
-          # The difference: [0:2] has end-start=2, [2:3] has end-start=1
-          # Maybe we only subtract if end-start > 1?
-          # Actually, let's check: after adjustment, [0:2] -> [1:3] (range 2), subtract 1 -> [1:2] ✓
-          # After adjustment, [2:3] -> [3:4] (range 1), if we subtract -> [3:3] ✗, if not -> [3:4] ✓
-          # So: don't subtract if the adjusted range would be 1 or less?
-          if (end - start > 1) {
-            end <- end - 1
-          }
-          # Actually wait, that would break [1:3] which should work
-          # Let me think: [1:3] in 0-indexed means positions 1,2 (exclusive end)
-          # After adjustment: [2:4], subtract 1 -> [2:3] gives indices 2,3 ✓
-          # So we DO want to subtract for [1:3]
-          # Maybe the rule is: always subtract, EXCEPT when end == start+1 in the original?
-          # Or: subtract unless it would make the range empty?
-          # For now, let's try a simpler approach: if subtracting would give us fewer items than expected, don't subtract
-          # But we don't know the expected... 
-          # Actually, let me check the JSONPath spec behavior more carefully
-          # For now, let's NOT subtract and see which tests break
-          # end <- end - 1  # Comment out to test
         }
       }
+    }
   }
-  
+
   step <- if (length(parts) < 3 || parts[3] == "") 1 else as.numeric(parts[3])
   if (is.na(step) || step == 0) step <- 1
-  
-  # Clamp to valid range (R uses 1-indexing)
+
   start <- max(1, min(start, len + 1))
   end <- max(0, min(end, len))
   
   if (start > end) {
     return(list())
   }
-  
-  # Generate sequence with step
-  # Note: start and end are already in R's 1-indexed range after adjustment
+
   if (step == 1) {
     seq_indices <- seq(start, end)
   } else if (step > 0) {
@@ -333,117 +272,96 @@ slice <- function(piece, json, zero_index = TRUE) {
   json[seq_indices]
 }
 
-# reformat jsonpath with delimiters, allowing quoted names
 #' @importFrom magrittr "%>%"
 format_path <- function(jsonpath) {
-  # Protect bracket contents from being split on dots
-  # Extract all bracket contents first
-  bracket_contents <- character(0)
   protected <- jsonpath
-  
-  # Find all bracket matches
+  path_len <- nchar(protected)
+
   bracket_matches <- gregexpr("\\[([^\\[\\]]*)\\]", protected, perl = TRUE)
   match_starts <- bracket_matches[[1]]
   match_lengths <- attr(bracket_matches[[1]], "match.length")
   
   if (length(match_starts) > 0 && match_starts[1] != -1) {
-    # Extract bracket contents and replace with placeholders
     placeholders <- character(length(match_starts))
-    for (i in rev(seq_along(match_starts))) {  # Reverse to preserve positions
+    # Store bracket contents and replace with placeholders
+    # Work backwards to preserve positions
+    for (i in rev(seq_along(match_starts))) {
       start_pos <- match_starts[i]
-      length <- match_lengths[i]
-      # Extract content (without brackets)
-      content <- substr(protected, start_pos + 1, start_pos + length - 2)
+      match_len <- match_lengths[i]
+      content <- substr(protected, start_pos + 1, start_pos + match_len - 2)
       placeholder <- paste0("___BRACKET", i, "___")
       placeholders[i] <- content
       # Replace bracket content with placeholder
+      # Update path_len after each replacement
       protected <- paste0(
         substr(protected, 1, start_pos),
         "[", placeholder, "]",
-        substr(protected, start_pos + length, nchar(protected))
+        substr(protected, start_pos + match_len, nchar(protected))
       )
+      path_len <- nchar(protected)
     }
     
-    # Now do the path processing
-    normed_path <- protected %>%
-      # $.x -> $;..;x (handle recursive descent) - do this first
-      gsub("\\.{2}", ";..;", .) %>%
-      # Split on dots (lookbehind: . or @, lookahead for . but not @.)
-      stringr::str_replace_all("(?<![\\.@])\\.(?!\\.)", ";") %>%
-      # Replace brackets with semicolon format
-      gsub("\\[", ";", .) %>%
-      gsub("\\]", "", .) %>%
-      # Restore bracket contents
-      {
-        result <- .
-        for (i in seq_along(placeholders)) {
-          result <- gsub(paste0("___BRACKET", i, "___"), placeholders[i], result, fixed = TRUE)
-        }
-        result
-      }
+    # Apply transformations
+    normed_path <- protected
+    normed_path <- gsub("\\.{2}", ";..;", normed_path, fixed = FALSE)
+    normed_path <- stringr::str_replace_all(normed_path, "(?<![\\.@])\\.(?!\\.)", ";")
+    # Replace brackets with semicolons (use fixed=TRUE with literal "[")
+    normed_path <- gsub("[", ";", normed_path, fixed = TRUE)
+    normed_path <- gsub("]", "", normed_path, fixed = TRUE)
+    
+    # Restore placeholders
+    for (i in seq_along(placeholders)) {
+      normed_path <- gsub(paste0("___BRACKET", i, "___"), placeholders[i], normed_path, fixed = TRUE)
+    }
   } else {
-    # No brackets, just process normally
-    normed_path <- protected %>%
-      gsub("\\.{2}", ";..;", .) %>%
-      stringr::str_replace_all("(?<![\\.@])\\.(?!\\.)", ";")
+    normed_path <- protected
+    normed_path <- gsub("\\.{2}", ";..;", normed_path, fixed = FALSE)
+    normed_path <- stringr::str_replace_all(normed_path, "(?<![\\.@])\\.(?!\\.)", ";")
   }
   
-  # Clean up
-  normed_path <- normed_path %>%
-    gsub(";+", ";", .) %>%
-    sub(";$", "", .) %>%
-    sub("^;", "", .)
+  # Clean up separators
+  normed_path <- gsub(";+", ";", normed_path, fixed = FALSE)
+  normed_path <- sub(";$", "", normed_path, fixed = FALSE)
+  normed_path <- sub("^;", "", normed_path, fixed = FALSE)
   
   normed_path
 }
 
-# convert normalised 0-indexed path to 1-indexed
 adjust_indices <- function(jsonpath) {
   path_parts <- stringr::str_split(jsonpath, ";", simplify = TRUE)
   
   adjust_part <- function(part) {
-    # If it's a simple number (non-negative), adjust it
     if (is_number(part)) {
       num_val <- as.numeric(part)
-      # Don't adjust negative indices - they're handled separately
       if (num_val >= 0) {
         return(as.character(num_val + 1))
       }
       return(part)
     }
     
-    # If it contains slice or union syntax, adjust numeric indices within it
-    # Handle slice syntax: start:end:step
     if (grepl(":", part) && !grepl("@", part)) {
-      # Split on : but preserve structure (including empty parts for :end or start:)
-      # Use a regex to split but keep empty strings
       parts <- strsplit(part, ":", fixed = FALSE)[[1]]
-      # If the string ends with :, add an empty string
       if (grepl(":$", part)) {
         parts <- c(parts, "")
       }
       adjusted_parts <- vapply(seq_along(parts), function(i) {
         p <- parts[i]
         p_trim <- trimws(p)
-        # Don't adjust the step (third part) - steps are always absolute
         if (i == 3 && p_trim != "" && is_number(p_trim)) {
-          return(p)  # Step should not be adjusted
+          return(p)
         }
         if (p_trim != "" && is_number(p_trim)) {
           num_val <- as.numeric(p_trim)
-          # Don't adjust negative indices
           if (num_val >= 0) {
             return(as.character(num_val + 1))
           }
         }
         return(p)
       }, character(1))
-      # Reconstruct with colons
       result <- paste(adjusted_parts, collapse = ":")
       return(result)
     }
     
-    # Handle union syntax: 0,1,2 or -1,0,1
     if (grepl(",", part) && !grepl("@|\\?", part)) {
       parts <- strsplit(part, ",")[[1]]
       adjusted_parts <- vapply(parts, function(p) {
@@ -467,8 +385,6 @@ adjust_indices <- function(jsonpath) {
   paste(adjusted_parts, collapse = ";")
 }
 
-# dispatch on piece and process simple subsetting
-# primary recursive function
 process_piece <- function(jsonpath, json, processed, zero_index = TRUE) {
 
   if (is.null(json)) {
@@ -500,35 +416,37 @@ process_piece <- function(jsonpath, json, processed, zero_index = TRUE) {
     
     # Special case: ..* means recursively get all elements
     if (search_key == "*") {
-      # Recursively collect all values
+      # Recursively collect all values using a closure for efficiency
+      all_results <- list()
+      
       collect_all <- function(obj) {
-        results <- list()
         if (is.list(obj)) {
           if (!is.null(names(obj))) {
             # It's an object, add all values
-            results <- c(results, as.list(obj))
+            all_results <<- c(all_results, as.list(obj))
             # Recursively collect from each value
             for (val in obj) {
               if (is.list(val)) {
-                results <- c(results, collect_all(val))
+                collect_all(val)
               }
             }
           } else {
             # It's an array, recursively collect from each element
             for (item in obj) {
               if (is.list(item)) {
-                results <- c(results, collect_all(item))
+                collect_all(item)
               } else {
-                results <- c(results, list(item))
+                all_results <<- c(all_results, list(item))
               }
             }
           }
         } else {
-          results <- list(obj)
+          all_results <<- c(all_results, list(obj))
         }
-        results
+        invisible(NULL)
       }
-      results <- collect_all(json)
+      collect_all(json)
+      results <- all_results
       if (remaining_path != "") {
         processed_results <- lapply(results, function(result) {
           process_piece(remaining_path, result, add_pieces(processed, this_piece, "*"), zero_index)
@@ -648,6 +566,10 @@ process_piece <- function(jsonpath, json, processed, zero_index = TRUE) {
     filtered <- Filter(function(x) {
       evaluate_filter(filter_expr, x)
     }, json)
+    
+    if (length(filtered) == 0) {
+      return(list())
+    }
     
     if (todo != "") {
       # Continue processing with filtered results
