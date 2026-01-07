@@ -615,31 +615,17 @@ querying language for JSON, similar to XPath for XML.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;blmoore/rjsonpath&quot;</span>)</span></code></pre></div>
 <h2 id="usage">Usage</h2>
 <p>As an example, take this simple JSON:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>{<span class="st">&quot;menu&quot;</span><span class="op">:</span> {</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>  <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;file&quot;</span><span class="op">,</span></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>  <span class="st">&quot;value&quot;</span><span class="op">:</span> <span class="st">&quot;File&quot;</span><span class="op">,</span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>  <span class="st">&quot;popup&quot;</span><span class="op">:</span> {</span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>    <span class="st">&quot;menuitem&quot;</span><span class="op">:</span> [</span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>      {<span class="st">&quot;value&quot;</span><span class="op">:</span> <span class="st">&quot;New&quot;</span><span class="op">,</span> <span class="st">&quot;onclick&quot;</span><span class="op">:</span> <span class="st">&quot;CreateNewDoc()&quot;</span>}<span class="op">,</span></span>
-<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>      {<span class="st">&quot;value&quot;</span><span class="op">:</span> <span class="st">&quot;Open&quot;</span><span class="op">,</span> <span class="st">&quot;onclick&quot;</span><span class="op">:</span> <span class="st">&quot;OpenDoc()&quot;</span>}<span class="op">,</span></span>
-<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>      {<span class="st">&quot;value&quot;</span><span class="op">:</span> <span class="st">&quot;Close&quot;</span><span class="op">,</span> <span class="st">&quot;onclick&quot;</span><span class="op">:</span> <span class="st">&quot;CloseDoc()&quot;</span>}</span>
-<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>    ]</span>
-<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>  }</span>
-<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>}}</span></code></pre></div>
-<script>
-{"menu": {
-  "id": "file",
-  "value": "File",
-  "popup": {
-    "menuitem": [
-      {"value": "New", "onclick": "CreateNewDoc()"},
-      {"value": "Open", "onclick": "OpenDoc()"},
-      {"value": "Close", "onclick": "CloseDoc()"}
-    ]
-  }
-}}
-</script>
-
+<div class="sourceCode" id="cb2"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;menu&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>  <span class="dt">&quot;id&quot;</span><span class="fu">:</span> <span class="st">&quot;file&quot;</span><span class="fu">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>  <span class="dt">&quot;value&quot;</span><span class="fu">:</span> <span class="st">&quot;File&quot;</span><span class="fu">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>  <span class="dt">&quot;popup&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>    <span class="dt">&quot;menuitem&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>      <span class="fu">{</span><span class="dt">&quot;value&quot;</span><span class="fu">:</span> <span class="st">&quot;New&quot;</span><span class="fu">,</span> <span class="dt">&quot;onclick&quot;</span><span class="fu">:</span> <span class="st">&quot;CreateNewDoc()&quot;</span><span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>      <span class="fu">{</span><span class="dt">&quot;value&quot;</span><span class="fu">:</span> <span class="st">&quot;Open&quot;</span><span class="fu">,</span> <span class="dt">&quot;onclick&quot;</span><span class="fu">:</span> <span class="st">&quot;OpenDoc()&quot;</span><span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>      <span class="fu">{</span><span class="dt">&quot;value&quot;</span><span class="fu">:</span> <span class="st">&quot;Close&quot;</span><span class="fu">,</span> <span class="dt">&quot;onclick&quot;</span><span class="fu">:</span> <span class="st">&quot;CloseDoc()&quot;</span><span class="fu">}</span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>    <span class="ot">]</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="fu">}}</span></span></code></pre></div>
 <p>Via <code>read_json</code> this can be read into R as:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>json</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co">#&gt; $menu</span></span>
@@ -708,12 +694,37 @@ titles:</p>
 <h2 id="performance">Performance</h2>
 <p>Performance benchmarks on a large JSON object (10,000 element
 array):</p>
-<pre><code>#&gt; | Operation | Median Time | Mean Time |
-#&gt; |-----------|-------------|-----------|
-#&gt; | Simple property access (`$.data[*].name`) | 259.0 ms | 266.4 ms |
-#&gt; | Filter expression (`$.data[?(@.price&lt;50)]`) | 834.8 ms | 839.6 ms |
-#&gt; | Recursive descent (`$..target`) | 0.13 ms | 0.16 ms |
-#&gt; | Array slice (`$.data[0:100]`) | 0.2 ms | 0.3 ms |</code></pre>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Median Time</th>
+<th>Mean Time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Simple property access (<code>$.data[*].name</code>)</td>
+<td>257.0 ms</td>
+<td>264.6 ms</td>
+</tr>
+<tr>
+<td>Filter expression (<code>$.data[?(@.price&lt;50)]</code>)</td>
+<td>839.4 ms</td>
+<td>853.1 ms</td>
+</tr>
+<tr>
+<td>Recursive descent (<code>$..target</code>)</td>
+<td>0.13 ms</td>
+<td>0.16 ms</td>
+</tr>
+<tr>
+<td>Array slice (<code>$.data[0:100]</code>)</td>
+<td>0.2 ms</td>
+<td>0.3 ms</td>
+</tr>
+</tbody>
+</table>
 
 </body>
 </html>

@@ -26,7 +26,7 @@ devtools::install_github("blmoore/rjsonpath")
 
 As an example, take this simple JSON:
 
-``` js
+``` json
 {"menu": {
   "id": "file",
   "value": "File",
@@ -39,20 +39,6 @@ As an example, take this simple JSON:
   }
 }}
 ```
-
-<script>
-{"menu": {
-  "id": "file",
-  "value": "File",
-  "popup": {
-    "menuitem": [
-      {"value": "New", "onclick": "CreateNewDoc()"},
-      {"value": "Open", "onclick": "OpenDoc()"},
-      {"value": "Close", "onclick": "CloseDoc()"}
-    ]
-  }
-}}
-</script>
 
 Via `read_json` this can be read into R as:
 
@@ -168,9 +154,9 @@ json_path(store, "$.store.book[0,3].title")
 
 Performance benchmarks on a large JSON object (10,000 element array):
 
-    #> | Operation | Median Time | Mean Time |
-    #> |-----------|-------------|-----------|
-    #> | Simple property access (`$.data[*].name`) | 259.0 ms | 266.4 ms |
-    #> | Filter expression (`$.data[?(@.price<50)]`) | 834.8 ms | 839.6 ms |
-    #> | Recursive descent (`$..target`) | 0.13 ms | 0.16 ms |
-    #> | Array slice (`$.data[0:100]`) | 0.2 ms | 0.3 ms |
+| Operation                                   | Median Time | Mean Time |
+|---------------------------------------------|-------------|-----------|
+| Simple property access (`$.data[*].name`)   | 257.0 ms    | 264.6 ms  |
+| Filter expression (`$.data[?(@.price<50)]`) | 839.4 ms    | 853.1 ms  |
+| Recursive descent (`$..target`)             | 0.13 ms     | 0.16 ms   |
+| Array slice (`$.data[0:100]`)               | 0.2 ms      | 0.3 ms    |
